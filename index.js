@@ -1,82 +1,111 @@
+// index.js
 import express from "express";
 import bodyParser from "body-parser";
 import axios from "axios";
 
 const app = express();
-const port = 3000;
-const API_URL = "http://localhost:4000";
+const port = parseInt(process.env.PORT, 10) || 3000;
 
+// In‑memory “database”
+let posts = [
+  { id: 1, title: "First Post", content: "Hello, world!" },
+  { id: 2, title: "Second Post", content: "Express on Vercel." }
+];
+let lastId = posts.length;
+
+// View engine & static files
+app.set("view engine", "ejs");
 app.use(express.static("public"));
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Route to render the main page
-app.get("/", async (req, res) => {
-  try {
-    const response = await axios.get(`${API_URL}/posts`);
-    console.log(response);
-    res.render("index.ejs", { posts: response.data });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching posts" });
-  }
+// —— API routes ——
+
+// Get all posts
+app.get("/posts", (req, res) => {
+  res.json(posts);
 });
 
-// Route to render the edit page
-app.get("/new", (req, res) => {
-  res.render("modify.ejs", { heading: "New Post", submit: "Create Post" });
-});
-
-app.get("/edit/:id", async (req, res) => {
-  try {
-    const response = await axios.get(`${API_URL}/posts/${req.params.id}`);
-    console.log(response.data);
-    res.render("modify.ejs", {
-      heading: "Edit Post",
-      submit: "Update Post",
-      post: response.data,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching post" });
-  }
+// Get a single post
+app.get("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const post = posts.find(p => p.id === id);
+  return post ? res.json(post) : res.status(404).json({ error: "Not found" });
 });
 
 // Create a new post
-app.post("/api/posts", async (req, res) => {
-  try {
-    const response = await axios.post(`${API_URL}/posts`, req.body);
-    console.log(response.data);
-    res.redirect("/");
-  } catch (error) {
-    res.status(500).json({ message: "Error creating post" });
-  }
+app.post("/posts", (req, res) => {
+  const { title, content } = req.body;
+  const newPost = { id: ++lastId, title, content };
+  posts.push(newPost);
+  res.status(201).json(newPost);
 });
 
-// Partially update a post
-app.post("/api/posts/:id", async (req, res) => {
-  console.log("called");
-  try {
-    const response = await axios.patch(
-      `${API_URL}/posts/${req.params.id}`,
-      req.body
-    );
-    console.log(response.data);
-    res.redirect("/");
-  } catch (error) {
-    res.status(500).json({ message: "Error updating post" });
-  }
+// Update a post
+app.patch("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const post = posts.find(p => p.id === id);
+  if (!post) return res.status(404).json({ error: "Not found" });
+  Object.assign(post, req.body);
+  res.json(post);
 });
 
 // Delete a post
-app.get("/api/posts/delete/:id", async (req, res) => {
+app.delete("/posts/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  posts = posts.filter(p => p.id !== id);
+  res.status(204).end();
+});
+
+// —— Front‑end routes ——
+
+// Home page: fetches posts from the above API
+app.get("/", async (req, res) => {
   try {
-    await axios.delete(`${API_URL}/posts/${req.params.id}`);
-    res.redirect("/");
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting post" });
+    const apiUrl = `${req.protocol}://${req.get("host")}/posts`;
+    const response = await axios.get(apiUrl);
+    res.render("index.ejs", { posts: response.data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching posts");
   }
 });
 
+// New post form
+app.get("/new", (req, res) => {
+  res.render("new.ejs");
+});
+
+// Edit post form
+app.get("/edit/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const post = posts.find(p => p.id === id);
+  if (!post) return res.status(404).send("Not found");
+  res.render("edit.ejs", { post });
+});
+
+// Form handlers (you can also switch these to API-style if you prefer)
+app.post("/new", (req, res) => {
+  const { title, content } = req.body;
+  const newPost = { id: ++lastId, title, content };
+  posts.push(newPost);
+  res.redirect("/");
+});
+
+app.post("/edit/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const post = posts.find(p => p.id === id);
+  if (post) Object.assign(post, req.body);
+  res.redirect("/");
+});
+
+app.get("/delete/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  posts = posts.filter(p => p.id !== id);
+  res.redirect("/");
+});
+
+// Start server
 app.listen(port, () => {
-  console.log(`Backend server is running on http://localhost:${port}`);
+  console.log(`Listening on port ${port}`);
 });
