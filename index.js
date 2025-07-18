@@ -5,7 +5,6 @@ import axios from "axios";
 import path from "path";
 
 const app = express();
-const port = parseInt(process.env.PORT, 10) || 3000;
 
 // ——— View engine & static files ———
 app.set("view engine", "ejs");
@@ -14,132 +13,84 @@ app.use(express.static(path.join(process.cwd(), "public")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// ——— In‑memory “database” ———
+// ——— In-memory “database” ———
 let posts = [
-  {
-    id: 1,
-    title: "The Rise of Decentralized Finance",
-    content:
-      "Decentralized Finance (DeFi) is an emerging field in blockchain…",
-    author: "Alex Thompson",
-    date: "2023-08-01T10:00:00Z",
-  },
-  {
-    id: 2,
-    title: "The Impact of Artificial Intelligence on Modern Businesses",
-    content:
-      "Artificial Intelligence (AI) is no longer a concept of the future…",
-    author: "Mia Williams",
-    date: "2023-08-05T14:30:00Z",
-  },
-  {
-    id: 3,
-    title: "Sustainable Living: Tips for an Eco-Friendly Lifestyle",
-    content:
-      "Sustainability is more than just a buzzword… practical tips you can adopt today.",
-    author: "Samuel Green",
-    date: "2023-08-10T09:15:00Z",
-  },
+  { id: 1, title: "First Post", content: "Hello, world!", author: "Alice", date: "2023-08-01T10:00:00Z" },
+  { id: 2, title: "Second Post", content: "Express on Vercel.", author: "Bob", date: "2023-08-05T14:30:00Z" },
 ];
 let lastId = posts.length;
 
 // ——— API routes ———
-app.get("/posts", (req, res) => {
-  res.json(posts);
-});
+app.get("/posts", (req, res) => res.json(posts));
 
 app.get("/posts/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const post = posts.find((p) => p.id === id);
-  if (!post) return res.status(404).json({ error: "Not found" });
-  res.json(post);
+  const id = +req.params.id;
+  const p = posts.find(x => x.id === id);
+  return p ? res.json(p) : res.status(404).json({ error: "Not found" });
 });
 
 app.post("/posts", (req, res) => {
   const { title, content, author } = req.body;
-  const newPost = {
-    id: ++lastId,
-    title,
-    content,
-    author: author || "Anonymous",
-    date: new Date().toISOString(),
-  };
+  const newPost = { id: ++lastId, title, content, author: author||"Anonymous", date: new Date().toISOString() };
   posts.push(newPost);
   res.status(201).json(newPost);
 });
 
 app.patch("/posts/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const post = posts.find((p) => p.id === id);
-  if (!post) return res.status(404).json({ error: "Not found" });
-  Object.assign(post, req.body);
-  res.json(post);
+  const id = +req.params.id;
+  const p = posts.find(x => x.id === id);
+  if (!p) return res.status(404).json({ error: "Not found" });
+  Object.assign(p, req.body);
+  res.json(p);
 });
 
 app.delete("/posts/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  posts = posts.filter((p) => p.id !== id);
+  const id = +req.params.id;
+  posts = posts.filter(x => x.id !== id);
   res.status(204).end();
 });
 
-// ——— Front‑end routes ———
-
-// Home page
+// ——— Front-end routes ———
 app.get("/", async (req, res) => {
   try {
-    // same‑origin request
-    const fullUrl = `${req.protocol}://${req.get("host")}/posts`;
-    const { data } = await axios.get(fullUrl);
+    const url = `${req.protocol}://${req.get("host")}/posts`;
+    const { data } = await axios.get(url);
     res.render("index", { posts: data });
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     res.status(500).send("Error fetching posts");
   }
 });
 
-// New post form
-app.get("/new", (req, res) => {
-  res.render("modify", { heading: "New Post", submitText: "Create", post: null });
-});
+app.get("/new", (req, res) =>
+  res.render("modify", { heading: "New Post", submitText: "Create", post: null })
+);
 
-// Edit post form
 app.get("/edit/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const post = posts.find((p) => p.id === id);
-  if (!post) return res.status(404).send("Not found");
-  res.render("modify", { heading: "Edit Post", submitText: "Update", post });
+  const id = +req.params.id;
+  const p = posts.find(x => x.id === id);
+  if (!p) return res.status(404).send("Not found");
+  res.render("modify", { heading: "Edit Post", submitText: "Update", post: p });
 });
 
-// Handle create
 app.post("/new", (req, res) => {
   const { title, content, author } = req.body;
-  const newPost = {
-    id: ++lastId,
-    title,
-    content,
-    author: author || "Anonymous",
-    date: new Date().toISOString(),
-  };
-  posts.push(newPost);
+  posts.push({ id: ++lastId, title, content, author: author||"Anonymous", date: new Date().toISOString() });
   res.redirect("/");
 });
 
-// Handle update
 app.post("/edit/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const post = posts.find((p) => p.id === id);
-  if (post) Object.assign(post, req.body);
+  const id = +req.params.id;
+  const p = posts.find(x => x.id === id);
+  if (p) Object.assign(p, req.body);
   res.redirect("/");
 });
 
-// Handle delete
 app.get("/delete/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  posts = posts.filter((p) => p.id !== id);
+  const id = +req.params.id;
+  posts = posts.filter(x => x.id !== id);
   res.redirect("/");
 });
 
-// ——— Start server ———
-app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
-});
+// ——— Export for Vercel ———
+export default app;
