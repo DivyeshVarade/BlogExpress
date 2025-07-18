@@ -1,12 +1,14 @@
 import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
+import axios from "axios";
+import path from "path";
 
 const app = express();
 const port =process.env.PORT || 3000;
 
-app.set("view engine", "ejs");
-app.use(express.static("public"));
+app.set("views", path.join(process.cwd(), "views"));
+app.use(express.static(path.join(process.cwd(), "public")));
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -38,7 +40,7 @@ let posts = [
   },
 ];
 
-let lastId = 3;
+let lastId = posts.length;
 
 // Route to render main page
 app.get("/", (req, res) => {
