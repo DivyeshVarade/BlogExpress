@@ -15,7 +15,7 @@
     </h1>
 
     <% if (locals.post) { %>
-      <form id="editForm" method="post" action="/api/posts/<%=post.id%>">
+      <form id="editForm" method="post" action="/posts/<%=post.id%>">
         <input type="text" name="title" value="<%=post.title %>">
         <textarea name="content" rows="10"><%=post.content %></textarea>
         <input type="text" name="author" value="<%=post.author %>">
@@ -24,7 +24,7 @@
         </button>
       </form>
       <% } else {%>
-        <form id="newPostForm" method="post" action="/api/posts">
+        <form id="newPostForm" method="post" action="/posts">
           <input type="text" name="title" placeholder="Title" required>
           <textarea name="content" placeholder="Content" required rows="10"></textarea>
           <input type="text" name="author" placeholder="Author" required>
